@@ -44,7 +44,7 @@ const StudentForgetPassword = () => {
     
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/student/forgot-password`, { email });
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/student/forgot-password`, { email });
       if (res.data.success) {
         toast.success(res.data.message);
         setStep(2);
@@ -70,7 +70,7 @@ const StudentForgetPassword = () => {
 
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/student/reset-password`, {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/student/reset-password`, {
         email,
         otp,
         newPassword

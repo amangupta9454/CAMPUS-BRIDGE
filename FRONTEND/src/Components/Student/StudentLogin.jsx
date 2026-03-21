@@ -23,7 +23,7 @@ const StudentLogin = () => {
 
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/student/login`, formData);
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/student/login`, formData);
       
       if (res.data.success) {
         localStorage.setItem('token', res.data.token);

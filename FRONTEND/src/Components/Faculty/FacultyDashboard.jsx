@@ -52,7 +52,7 @@ const FacultyDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/faculty/complaints`, {
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/complaints`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data.success) {
@@ -77,7 +77,7 @@ const FacultyDashboard = () => {
       setUpdateLoading(true);
       const token = localStorage.getItem('token');
       const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/faculty/update-complaint/${selectedComplaint._id}`,
+        `${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/update-complaint/${selectedComplaint._id}`,
         updateData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -101,7 +101,7 @@ const FacultyDashboard = () => {
     try {
        setFeedbackLoading(true);
        const token = localStorage.getItem('token');
-       const res = await axios.put(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/faculty/feedback/${selectedComplaint._id}`, 
+       const res = await axios.put(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/feedback/${selectedComplaint._id}`, 
        { rating, comment }, 
        { headers: { Authorization: `Bearer ${token}` }});
        

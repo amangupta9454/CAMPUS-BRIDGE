@@ -4,7 +4,7 @@ import { Camera, MapPin, Upload, X, Loader2, PackageSearch } from 'lucide-react'
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app';
 
 const FacultyReportItem = ({ onSuccess }) => {
   const [form, setForm] = useState({ itemName: '', foundLocation: '' });

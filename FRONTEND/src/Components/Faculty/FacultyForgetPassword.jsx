@@ -40,7 +40,7 @@ const FacultyForgetPassword = () => {
     
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/faculty/forgot-password`, { email });
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/forgot-password`, { email });
       if (res.data.success) {
         toast.success(res.data.message);
         setStep(2);
@@ -66,7 +66,7 @@ const FacultyForgetPassword = () => {
 
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/faculty/reset-password`, {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/reset-password`, {
         email, otp, newPassword
       });
 

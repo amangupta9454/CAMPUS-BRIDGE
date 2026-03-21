@@ -93,7 +93,7 @@ const StudentRegister = () => {
 
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/student/register`, submitData, {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/student/register`, submitData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
@@ -114,7 +114,7 @@ const StudentRegister = () => {
 
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/student/verify-otp`, {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/student/verify-otp`, {
         email: formData.email,
         otp
       });

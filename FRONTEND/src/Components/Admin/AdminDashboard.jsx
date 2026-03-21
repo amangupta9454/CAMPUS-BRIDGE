@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import LostFoundList from '../LostFoundList';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app';
 const authHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const CLOSED = ['Resolved', 'Rejected', 'Withdrawn'];

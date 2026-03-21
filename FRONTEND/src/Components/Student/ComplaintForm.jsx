@@ -84,7 +84,7 @@ const ComplaintForm = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/complaint/create`, submitData, {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/complaint/create`, submitData, {
         headers: { 
           'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${token}`
