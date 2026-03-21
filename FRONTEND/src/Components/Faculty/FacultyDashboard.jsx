@@ -1,0 +1,629 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
+import { Clock, CheckCircle, FileWarning, Search, User, X, BadgeInfo, Image as ImageIcon, Activity, PieChart as PieChartIcon, BarChart2, PackageSearch } from 'lucide-react';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import FacultyReportItem from './ReportItem';
+import LostFoundList from '../LostFoundList';
+
+const FacultyDashboard = () => {
+  const navigate = useNavigate();
+  const [faculty, setFaculty] = useState(null);
+  const [stats, setStats] = useState({ total: 0, highPriority: 0, pending: 0, resolved: 0 });
+  const [complaints, setComplaints] = useState([]);
+  const [filteredComplaints, setFilteredComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modals
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateData, setUpdateData] = useState({ status: '', reason: '' });
+  const [updateLoading, setUpdateLoading] = useState(false);
+
+  // Faculty Feedback Evaluation State
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
+  useEffect(() => {
+    const storedFaculty = localStorage.getItem('faculty');
+    if (storedFaculty) {
+      setFaculty(JSON.parse(storedFaculty));
+    } else {
+      navigate('/faculty/login');
+    }
+    fetchDashboardData();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (searchQuery) {
+      const lowerQ = searchQuery.toLowerCase();
+      setFilteredComplaints(complaints.filter(c => 
+        (c.complaintId || c._id).toLowerCase().includes(lowerQ) ||
+        (c.title || '').toLowerCase().includes(lowerQ)
+      ));
+    } else {
+      setFilteredComplaints(complaints);
+    }
+  }, [searchQuery, complaints]);
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/faculty/complaints`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setStats(res.data.stats);
+        setComplaints(res.data.complaints);
+        setFilteredComplaints(res.data.complaints);
+      }
+    } catch (error) {
+      toast.error('Failed to load complaints');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateSubmit = async (e) => {
+    e.preventDefault();
+    if (['Delayed', 'Rejected'].includes(updateData.status) && !updateData.reason) {
+      return toast.error(`Reason is required when marking as ${updateData.status}`);
+    }
+
+    try {
+      setUpdateLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/faculty/update-complaint/${selectedComplaint._id}`,
+        updateData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (res.data.success) {
+        toast.success(res.data.message);
+        setIsUpdateModalOpen(false);
+        fetchDashboardData();
+        setSelectedComplaint(res.data.complaint);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error updating status');
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault();
+    if(rating === 0) return toast.error('Please select a star rating');
+    try {
+       setFeedbackLoading(true);
+       const token = localStorage.getItem('token');
+       const res = await axios.put(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/faculty/feedback/${selectedComplaint._id}`, 
+       { rating, comment }, 
+       { headers: { Authorization: `Bearer ${token}` }});
+       
+       if(res.data.success) {
+          toast.success('Evaluation submitted successfully!');
+          setSelectedComplaint(res.data.complaint);
+          fetchDashboardData();
+       }
+    } catch(err) {
+       toast.error(err.response?.data?.message || 'Error submitting evaluation');
+    } finally {
+       setFeedbackLoading(false);
+    }
+  };
+
+  const openUpdateModal = (complaint) => {
+    setSelectedComplaint(complaint);
+    setUpdateData({ status: complaint.status, reason: '' });
+    setIsUpdateModalOpen(true);
+  };
+
+  const getPriorityColor = (priority) => {
+    if (priority === 'High') return 'bg-red-100 text-red-700 border-red-200';
+    if (priority === 'Medium') return 'bg-amber-100 text-amber-700 border-amber-200';
+    return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+  };
+
+  const getStatusStyle = (status) => {
+     switch(status) {
+       case 'Pending': return 'bg-slate-100 text-slate-700 border-slate-300';
+       case 'In Progress': return 'bg-sky-100 text-sky-700 border-sky-300';
+       case 'Resolved': return 'bg-emerald-100 text-emerald-700 border-emerald-300';
+       case 'Rejected': return 'bg-red-100 text-red-700 border-red-300';
+       case 'Delayed': return 'bg-amber-100 text-amber-700 border-amber-300';
+       case 'Withdrawn': return 'bg-slate-200 text-slate-500 border-slate-400';
+       default: return 'bg-slate-100 text-slate-700 border-slate-200';
+     }
+  };
+
+  const checkSLA = (complaint) => {
+    if (['Resolved', 'Rejected', 'Withdrawn'].includes(complaint.status)) return null;
+    const createdAt = new Date(complaint.createdAt).getTime();
+    const now = Date.now();
+    const hoursPassed = (now - createdAt) / (1000 * 60 * 60);
+
+    let slaLimit = 0;
+    if (complaint.priority === 'High') slaLimit = 24;
+    else if (complaint.priority === 'Medium') slaLimit = 72;
+    else slaLimit = 168; // 7 days
+
+    const isOverdue = hoursPassed > slaLimit;
+    const hoursLeft = Math.max(0, Math.floor(slaLimit - hoursPassed));
+
+    return {
+      isOverdue,
+      text: isOverdue ? 'Overdue SLAs!' : `${hoursLeft}h left (SLA)`
+    };
+  };
+
+  // --------------------------------------------------------------------------
+  // Analytics Crunching (Real-time dynamic parsing of the robust datasets)
+  // --------------------------------------------------------------------------
+  const analyticsData = useMemo(() => {
+    if (!complaints.length) return null;
+
+    const statusObj = { Pending:0, 'In Progress':0, Resolved:0, Delayed:0, Rejected:0, Withdrawn:0 };
+    const priorityObj = { High:0, Medium:0, Low:0 };
+    const categoryObj = {};
+
+    complaints.forEach(c => {
+      // Status
+      if(statusObj[c.status] !== undefined) statusObj[c.status]++;
+      else statusObj[c.status] = 1;
+      
+      // Priority
+      if(priorityObj[c.priority] !== undefined) priorityObj[c.priority]++;
+      else priorityObj[c.priority] = 1;
+      
+      // Category
+      const cat = c.category || 'Other';
+      categoryObj[cat] = (categoryObj[cat] || 0) + 1;
+    });
+
+    return {
+      status: Object.keys(statusObj).map(k => ({ name: k, value: statusObj[k] })).filter(d => d.value > 0),
+      priority: Object.keys(priorityObj).map(k => ({ name: k, value: priorityObj[k] })).filter(d => d.value > 0),
+      category: Object.keys(categoryObj).map(k => ({ name: k, value: categoryObj[k] })).sort((a,b)=> b.value - a.value)
+    };
+  }, [complaints]);
+
+  const PIE_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#0ea5e9', '#64748b'];
+  const PRIORITY_COLORS = { 'High': '#ef4444', 'Medium': '#f59e0b', 'Low': '#10b981' };
+
+  if (loading) return <div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div></div>;
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+      
+      {/* Faculty ID Alert */}
+      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-xl flex items-start gap-3 shadow-sm">
+        <BadgeInfo className="text-blue-500 mt-0.5" />
+        <div>
+          <h3 className="text-sm font-bold text-blue-800">Your Official Faculty ID</h3>
+          <p className="text-xs text-blue-600 mt-1 font-mono bg-blue-100/50 inline-block px-2 py-1 rounded">
+            {faculty?.facultyId || 'Fetching...'}
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Faculty Workspace</h1>
+          <p className="text-slate-500 mt-1">Manage and resolve student complaints anonymously.</p>
+        </div>
+        <div className="h-12 w-12 rounded-full bg-red-100 border-2 border-red-200 overflow-hidden flex items-center justify-center">
+            {faculty?.profileImage ? (
+              <img src={faculty.profileImage} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <User size={24} className="text-red-600" />
+            )}
+        </div>
+      </div>
+
+      {/* Analytics Dashboard Matrix (Realtime Recharts) */}
+      {analyticsData && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+           
+           {/* Chart 1: Category Bar Chart */}
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
+             <div className="flex items-center gap-2 mb-6">
+               <BarChart2 className="text-slate-400" size={20}/>
+               <h3 className="font-bold text-slate-700">Complaint Volumes by Category</h3>
+             </div>
+             <div className="h-64">
+               <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={analyticsData.category} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                   <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}} />
+                   <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                   <Bar dataKey="value" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={40}>
+                     {analyticsData.category.map((entry, index) => (
+                       <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                     ))}
+                   </Bar>
+                 </BarChart>
+               </ResponsiveContainer>
+             </div>
+           </div>
+
+           {/* Chart 2: Status/Priority Radial Combo */}
+           <div className="grid grid-rows-2 gap-6">
+             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                <div className="flex items-center gap-2 mb-2">
+                  <PieChartIcon className="text-slate-400" size={16}/>
+                  <h3 className="font-bold text-slate-700 text-sm">Status Dist.</h3>
+                </div>
+                <div className="h-32">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                       <Pie data={analyticsData.status} innerRadius={35} outerRadius={50} paddingAngle={2} dataKey="value">
+                         {analyticsData.status.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                         ))}
+                       </Pie>
+                       <RechartsTooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                     </PieChart>
+                   </ResponsiveContainer>
+                </div>
+             </div>
+
+             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="text-slate-400" size={16}/>
+                  <h3 className="font-bold text-slate-700 text-sm">Priorities</h3>
+                </div>
+                <div className="h-32">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                       <Pie data={analyticsData.priority} outerRadius={50} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                         {analyticsData.priority.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={PRIORITY_COLORS[entry.name] || '#64748b'} />
+                         ))}
+                       </Pie>
+                       <RechartsTooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                     </PieChart>
+                   </ResponsiveContainer>
+                </div>
+             </div>
+           </div>
+           
+        </div>
+      )}
+
+      {/* Aggregate Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+           <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-full flex items-center justify-center"><FileWarning size={20}/></div>
+           <div>
+             <p className="text-2xl font-bold text-slate-800">{stats.total}</p>
+             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</p>
+           </div>
+         </div>
+         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+           <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center"><Activity size={20}/></div>
+           <div>
+             <p className="text-2xl font-bold text-slate-800">{stats.highPriority}</p>
+             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">High Priority</p>
+           </div>
+         </div>
+         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+           <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center"><Clock size={20}/></div>
+           <div>
+             <p className="text-2xl font-bold text-slate-800">{stats.pending}</p>
+             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending</p>
+           </div>
+         </div>
+         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center"><CheckCircle size={20}/></div>
+           <div>
+             <p className="text-2xl font-bold text-slate-800">{stats.resolved}</p>
+             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Resolved</p>
+           </div>
+         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+          <h2 className="text-lg font-bold text-slate-800">Complaint Queue</h2>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Search ID or Title..." 
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-100 text-xs text-slate-400 uppercase tracking-wider">
+                   <th className="pb-3 px-2 font-bold">ID & Date</th>
+                   <th className="pb-3 px-2 font-bold">Title & Category</th>
+                   <th className="pb-3 px-2 font-bold">Priority</th>
+                   <th className="pb-3 px-2 font-bold">Status</th>
+                   <th className="pb-3 px-2 font-bold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredComplaints.length === 0 ? (
+                  <tr><td colSpan="5" className="py-8 text-center text-slate-500 italic">No complaints found.</td></tr>
+                ) : (
+                  filteredComplaints.map((c) => {
+                    const sla = checkSLA(c);
+                    return (
+                      <tr key={c._id} className="hover:bg-slate-50/70 transition-colors group">
+                        <td className="py-4 px-2 align-top">
+                          <p className="font-mono text-xs font-bold text-slate-600">{c.complaintId || c._id.slice(-6)}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">{new Date(c.createdAt).toLocaleDateString()}</p>
+                        </td>
+                        <td className="py-4 px-2 align-top max-w-xs">
+                          <p className="font-semibold text-slate-800 text-sm truncate pr-4">{c.title}</p>
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded">{c.category || 'Other'}</span>
+                        </td>
+                        <td className="py-4 px-2 align-top">
+                          <span className={`inline-block px-2.5 py-1 rounded border text-xs font-bold ${getPriorityColor(c.priority)}`}>
+                            {c.priority || 'Medium'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-2 align-top">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className={`px-2.5 py-1 rounded border text-xs font-bold ${getStatusStyle(c.status)}`}>
+                              {c.status}
+                            </span>
+                            {sla && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${sla.isOverdue ? 'bg-red-100 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                                {sla.text}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-2 align-top text-right">
+                          <button 
+                            onClick={() => { setSelectedComplaint(c); }}
+                            className="text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:border-red-300 hover:text-red-700 px-3 py-1.5 rounded-lg transition-colors inline-block"
+                          >
+                            Review
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Detail Review Modal */}
+      {selectedComplaint && !isUpdateModalOpen &&(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative overflow-hidden">
+            
+            <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center z-10">
+              <div className="flex items-center gap-3">
+                <span className="text-xs bg-red-100 text-red-700 font-bold px-2 py-1 rounded font-mono">{selectedComplaint.complaintId}</span>
+                <span className={`text-xs font-bold px-2 py-1 border rounded ${getStatusStyle(selectedComplaint.status)}`}>{selectedComplaint.status}</span>
+              </div>
+              <button onClick={() => { setSelectedComplaint(null); setRating(0); setComment(''); }} className="text-slate-400 hover:text-slate-800 bg-slate-200/50 hover:bg-slate-200 p-1.5 rounded-full transition-colors">
+                <X size={20}/>
+              </button>
+            </div>
+
+            <div className="flex flex-col md:flex-row overflow-hidden flex-grow">
+               
+               {/* Left Context */}
+               <div className="md:w-3/5 p-6 overflow-y-auto border-b md:border-b-0 md:border-r border-slate-100 bg-white">
+                  <h2 className="text-xl font-bold text-slate-800 mb-4">{selectedComplaint.title}</h2>
+                  
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap mb-6">
+                    {selectedComplaint.description}
+                  </div>
+
+                  {selectedComplaint.remark && (
+                    <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                       <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">Anonymous Student Note</p>
+                       <p className="text-sm text-amber-700">{selectedComplaint.remark}</p>
+                    </div>
+                  )}
+
+                  {selectedComplaint.studentFeedback?.rating && (
+                    <div className="mb-6 p-5 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl relative overflow-hidden">
+                       <div className="absolute top-0 right-0 p-3 opacity-20"><CheckCircle size={40}/></div>
+                       <p className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider mb-2">Student Feedback Received</p>
+                       <div className="flex gap-1 mb-2">
+                         {[1,2,3,4,5].map(star => (
+                           <svg key={star} className={`w-5 h-5 ${star <= selectedComplaint.studentFeedback.rating ? 'text-yellow-400' : 'text-slate-300'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                         ))}
+                       </div>
+                       <p className="text-sm text-indigo-900 italic">"{selectedComplaint.studentFeedback.comment}"</p>
+                    </div>
+                  )}
+
+                  {/* Faculty Feedback Form Display */}
+                  {['Resolved', 'Rejected', 'Withdrawn'].includes(selectedComplaint.status) && (
+                     <div className="mb-6 border-t border-slate-100 pt-6 relative">
+                        <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">Evaluate the Interaction</h4>
+                        
+                        {selectedComplaint.facultyFeedback?.rating ? (
+                           <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl">
+                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Your Evaluation</p>
+                             <div className="flex gap-1 mb-2">
+                                {[1,2,3,4,5].map(star => (
+                                  <svg key={star} className={`w-5 h-5 ${star <= selectedComplaint.facultyFeedback.rating ? 'text-amber-400' : 'text-slate-300'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                ))}
+                             </div>
+                             <p className="text-sm text-slate-700">"{selectedComplaint.facultyFeedback.comment}"</p>
+                           </div>
+                        ) : (
+                           <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                             <div className="flex gap-2">
+                                {[1,2,3,4,5].map(star => (
+                                  <button 
+                                    type="button" 
+                                    key={star} 
+                                    onClick={() => setRating(star)}
+                                    className="focus:outline-none hover:scale-110 transition-transform"
+                                  >
+                                     <svg className={`w-8 h-8 ${star <= rating ? 'text-amber-400' : 'text-slate-200'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                  </button>
+                                ))}
+                             </div>
+                             <textarea 
+                               rows={2} 
+                               required
+                               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-red-400 focus:ring-2 focus:ring-red-100 outline-none text-sm transition-all resize-none"
+                               placeholder="Evaluate the student's behavior or constraint handling..."
+                               value={comment}
+                               onChange={e => setComment(e.target.value)}
+                             ></textarea>
+                             <button disabled={feedbackLoading} type="submit" className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold rounded-xl shadow-md transition-colors disabled:opacity-70">
+                                {feedbackLoading ? 'Submitting...' : 'Submit Evaluation'}
+                             </button>
+                           </form>
+                        )}
+                     </div>
+                  )}
+
+                  {/* Evidence Viewer */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                       <ImageIcon size={14}/> Evidence Provided ({selectedComplaint.images?.length || 0})
+                    </h4>
+                    {selectedComplaint.images && selectedComplaint.images.length > 0 ? (
+                       <div className="grid grid-cols-2 gap-3">
+                         {selectedComplaint.images.map((img, idx) => (
+                           <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="block aspect-[4/3] rounded-xl overflow-hidden border border-slate-200 hover:border-red-400 transition-colors cursor-zoom-in">
+                             <img src={img} alt={`Provable Evidence ${idx}`} className="w-full h-full object-cover" />
+                           </a>
+                         ))}
+                       </div>
+                    ) : (
+                       <p className="text-sm text-slate-400 italic bg-slate-50 p-4 rounded-xl text-center border border-dashed border-slate-200">No media attached.</p>
+                    )}
+                  </div>
+               </div>
+
+               {/* Right Actions & Timeline */}
+               <div className="md:w-2/5 flex flex-col bg-slate-50/50">
+                  <div className="p-6 border-b border-slate-100 bg-white">
+                     <button 
+                       onClick={() => setIsUpdateModalOpen(true)}
+                       className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors"
+                     >
+                       Update Status Log
+                     </button>
+                  </div>
+                  
+                  <div className="p-6 overflow-y-auto flex-grow">
+                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-4">
+                       <Activity size={14}/> Activity Log
+                     </h4>
+                     
+                     <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:w-0.5 before:bg-slate-200">
+                       {selectedComplaint.history && selectedComplaint.history.map((step, idx) => (
+                         <div key={idx} className="relative flex items-start w-full">
+                           <div className="absolute left-[11px] -translate-x-1/2 flex items-center justify-center w-6 h-6 rounded-full bg-white border-4 border-slate-300 z-10 mt-0.5"></div>
+                           
+                           <div className="w-full ml-8 shadow-sm border border-slate-100 rounded-xl p-3 bg-white">
+                             <div className="flex justify-between items-start mb-1">
+                               <h4 className={`text-xs font-bold ${step.status === 'Resolved'? 'text-emerald-600': step.status==='Rejected'?'text-red-600':'text-slate-800'}`}>
+                                 {step.status}
+                               </h4>
+                               <span className="text-[9px] text-slate-400 font-bold uppercase">{new Date(step.timestamp).toLocaleDateString()}</span>
+                             </div>
+                             <p className="text-xs text-slate-500 leading-relaxed mb-1.5">{step.message}</p>
+                             <div className="flex justify-between items-center border-t border-slate-50 pt-1.5">
+                               <span className="text-[10px] text-slate-400 font-medium">By: {step.updatedBy || 'System'}</span>
+                             </div>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Action Update Form Modal overlaying the details modal */}
+      {isUpdateModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6">
+             <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xl font-bold text-slate-800">Update Status</h3>
+               <button onClick={() => setIsUpdateModalOpen(false)} className="text-slate-400 hover:bg-slate-100 p-1.5 justify-center rounded-full"><X size={20}/></button>
+             </div>
+
+             <form onSubmit={handleUpdateSubmit} className="space-y-5">
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700">New Status</label>
+                  <select 
+                    value={updateData.status} 
+                    onChange={e => setUpdateData({...updateData, status: e.target.value})}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-red-400 focus:ring-2 focus:ring-red-100 outline-none transition-all bg-white"
+                  >
+                    <option value="" disabled>Select status...</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+
+                {['Delayed', 'Rejected', 'Resolved'].includes(updateData.status) && (
+                  <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="text-sm font-semibold text-slate-700">Reason / Note {['Delayed', 'Rejected'].includes(updateData.status) && <span className="text-red-500">*</span>}</label>
+                    <textarea 
+                      required={['Delayed', 'Rejected'].includes(updateData.status)}
+                      rows={3} 
+                      placeholder="Explain to the student..."
+                      value={updateData.reason}
+                      onChange={e => setUpdateData({...updateData, reason: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-red-400 focus:ring-2 focus:ring-red-100 outline-none transition-all resize-none"
+                    />
+                  </div>
+                )}
+
+                <button disabled={updateLoading} type="submit" className="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center disabled:opacity-70">
+                   {updateLoading ? 'Updating System...' : 'Confirm Update & Notify Student'}
+                </button>
+             </form>
+
+           </div>
+        </div>
+      )}
+      {/* ── Lost & Found Section ─────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pb-12">
+        <div className="flex items-center gap-2 mb-6">
+          <PackageSearch size={22} className="text-amber-600" />
+          <h2 className="text-xl font-black text-slate-800">Lost & Found</h2>
+          <span className="ml-2 px-2.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">Report & Return Items</span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <FacultyReportItem onSuccess={() => {}} />
+          </div>
+          <div className="lg:col-span-2">
+            <LostFoundList canReturn={true} compact={false} />
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+export default FacultyDashboard;
