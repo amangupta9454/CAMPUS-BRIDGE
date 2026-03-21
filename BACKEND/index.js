@@ -10,6 +10,9 @@ connectDB();
 
 const app = express();
 
+// Trust proxies (required for Vercel/Render rate limiting)
+app.set('trust proxy', 1);
+
 // Security Middlewares
 app.use(helmet());
 app.use(cors("*"));
