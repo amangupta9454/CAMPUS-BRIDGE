@@ -14,6 +14,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import LostFoundList from '../LostFoundList';
+import SlaTimer from '../SlaTimer';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app';
 const authHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
@@ -30,8 +31,9 @@ const STATUS_COLORS = {
   Objection:    'bg-purple-50 text-purple-700 border-purple-200',
 };
 
-const PRIORITY_DOT = { High: 'bg-red-500', Medium: 'bg-amber-500', Low: 'bg-emerald-500' };
+const PRIORITY_DOT = { Critical: 'bg-purple-600', High: 'bg-red-500', Medium: 'bg-amber-500', Low: 'bg-emerald-500' };
 const PRIORITY_BADGE = {
+  Critical: 'bg-purple-50 text-purple-700 border-purple-200',
   High:   'bg-red-50 text-red-600 border-red-200',
   Medium: 'bg-amber-50 text-amber-600 border-amber-200',
   Low:    'bg-emerald-50 text-emerald-600 border-emerald-200',
@@ -555,6 +557,7 @@ const AdminDashboard = () => {
                   <StatCard label="Pending"    value={stats?.pending}        icon={<Clock size={20} className="text-amber-600"/>}    bg="bg-amber-50" />
                   <StatCard label="Resolved"   value={stats?.resolved}       icon={<CheckCircle size={20} className="text-emerald-600"/>} bg="bg-emerald-50" />
                   <StatCard label="Overdue"    value={stats?.overdueCount}   icon={<AlertTriangle size={20} className="text-red-600"/>} bg="bg-red-50" sub="Need action" />
+                  <StatCard label="Escalated"  value={stats?.escalatedCount} icon={<ShieldAlert size={20} className="text-purple-600"/>} bg="bg-purple-50" sub="Auto-escalated" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -751,7 +754,7 @@ const AdminDashboard = () => {
                   <select value={cmpPriority} onChange={e => { setCmpPriority(e.target.value); setCmpPage(1); }}
                     className="bg-white border border-slate-200 px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:border-indigo-400">
                     <option value="">All Priorities</option>
-                    {['High','Medium','Low'].map(p => <option key={p}>{p}</option>)}
+                    {['Critical','High','Medium','Low'].map(p => <option key={p}>{p}</option>)}
                   </select>
                   <button onClick={fetchComplaints} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition text-slate-500"><RefreshCw size={15}/></button>
                 </div>
@@ -769,6 +772,7 @@ const AdminDashboard = () => {
                           <th className="text-left px-5 py-3">Complainant</th>
                           <th className="text-left px-5 py-3">Priority</th>
                           <th className="text-left px-5 py-3">Status</th>
+                          <th className="text-left px-5 py-3">SLA Timer</th>
                           <th className="text-left px-5 py-3">Assigned To</th>
                           <th className="text-left px-5 py-3">Date</th>
                           <th className="text-left px-5 py-3">Action</th>
@@ -803,6 +807,12 @@ const AdminDashboard = () => {
                               <td className="px-5 py-3">
                                 <span className={`px-2 py-0.5 text-[11px] font-bold border rounded-lg ${STATUS_COLORS[c.status]}`}>{c.status}</span>
                                 {c.isLocked && <Lock size={10} className="inline ml-1 text-slate-400"/>}
+                                {c.escalatedToAdmin && (
+                                  <span className="ml-1.5 text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 animate-pulse">🚨 CRITICAL</span>
+                                )}
+                              </td>
+                              <td className="px-5 py-3">
+                                <SlaTimer deadline={c.slaDeadline || c.deadline} status={c.status} compact />
                               </td>
                               <td className="px-5 py-3">
                                 {c.assignedFaculty ? (
@@ -823,7 +833,7 @@ const AdminDashboard = () => {
                               </td>
                             </tr>
                           ))}
-                          {complaints.length === 0 && <tr><td colSpan={8} className="text-center py-14 text-slate-400">No complaints found</td></tr>}
+                          {complaints.length === 0 && <tr><td colSpan={9} className="text-center py-14 text-slate-400">No complaints found</td></tr>}
                         </tbody>
                       </table>
                     </div>
@@ -866,7 +876,7 @@ const AdminDashboard = () => {
                         <PieChart>
                           <Pie data={stats.byPriority} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={75}
                             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                            {stats.byPriority.map((_, i) => <Cell key={i} fill={['#ef4444', '#f59e0b', '#10b981'][i]}/>)}
+                            {stats.byPriority.map((_, i) => <Cell key={i} fill={['#7c3aed', '#ef4444', '#f59e0b', '#10b981'][i]}/>)}
                           </Pie>
                           <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11 }}/>
                         </PieChart>

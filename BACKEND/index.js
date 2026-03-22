@@ -8,6 +8,10 @@ const connectDB = require('./config/db');
 // Connect to Database
 connectDB();
 
+// Start SLA Escalation Cron Job
+const startSLAEscalationJob = require('./jobs/slaEscalation');
+startSLAEscalationJob();
+
 const app = express();
 
 // Trust proxies (required for Vercel/Render rate limiting)

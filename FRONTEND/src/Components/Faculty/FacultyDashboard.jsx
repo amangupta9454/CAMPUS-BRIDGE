@@ -6,6 +6,7 @@ import { Clock, CheckCircle, FileWarning, Search, User, X, BadgeInfo, Image as I
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import FacultyReportItem from './ReportItem';
 import LostFoundList from '../LostFoundList';
+import SlaTimer from '../SlaTimer';
 
 const FacultyDashboard = () => {
   const navigate = useNavigate();
@@ -380,10 +381,9 @@ const FacultyDashboard = () => {
                             <span className={`px-2.5 py-1 rounded border text-xs font-bold ${getStatusStyle(c.status)}`}>
                               {c.status}
                             </span>
-                            {sla && (
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${sla.isOverdue ? 'bg-red-100 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                                {sla.text}
-                              </span>
+                            <SlaTimer deadline={c.slaDeadline || c.createdAt} status={c.status} compact />
+                            {c.escalatedToAdmin && (
+                              <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-black border border-red-200 animate-pulse">🚨 ESCALATED</span>
                             )}
                           </div>
                         </td>
@@ -411,9 +411,12 @@ const FacultyDashboard = () => {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col relative overflow-hidden">
             
             <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center z-10">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-xs bg-red-100 text-red-700 font-bold px-2 py-1 rounded font-mono">{selectedComplaint.complaintId}</span>
                 <span className={`text-xs font-bold px-2 py-1 border rounded ${getStatusStyle(selectedComplaint.status)}`}>{selectedComplaint.status}</span>
+                {selectedComplaint.escalatedToAdmin && (
+                  <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-black border border-red-200 animate-pulse">🚨 CRITICAL — ESCALATED</span>
+                )}
               </div>
               <button onClick={() => { setSelectedComplaint(null); setRating(0); setComment(''); }} className="text-slate-400 hover:text-slate-800 bg-slate-200/50 hover:bg-slate-200 p-1.5 rounded-full transition-colors">
                 <X size={20}/>
@@ -429,6 +432,11 @@ const FacultyDashboard = () => {
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap mb-6">
                     {selectedComplaint.description}
                   </div>
+
+                   {/* SLA Timer in modal */}
+                   <div className="mb-6">
+                     <SlaTimer deadline={selectedComplaint.slaDeadline || selectedComplaint.createdAt} status={selectedComplaint.status} />
+                   </div>
 
                   {selectedComplaint.remark && (
                     <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-xl">

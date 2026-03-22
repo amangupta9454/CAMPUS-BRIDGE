@@ -47,6 +47,12 @@ const createComplaint = async (req, res) => {
 
     const complaintId = await generateComplaintId();
 
+    // Compute SLA deadline
+    const slaRules = { High: 24, Medium: 72, Low: 168, Critical: 12 };
+    const slaHours = slaRules[priority] || 72;
+    const slaDeadline = new Date();
+    slaDeadline.setHours(slaDeadline.getHours() + slaHours);
+
     const newComplaint = await Complaint.create({
       complaintId,
       student: req.student._id,
@@ -56,6 +62,7 @@ const createComplaint = async (req, res) => {
       priority,
       remark,
       images: imageUrls,
+      slaDeadline,
       history: [{
         status: 'Pending',
         message: 'Complaint registered successfully',

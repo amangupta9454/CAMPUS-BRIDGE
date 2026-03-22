@@ -111,11 +111,43 @@ const complaintWithdrawnTemplate = (name, complaintId) => {
   `;
 };
 
+const escalationAlertTemplate = (complaintId, title, prevPriority, studentName, deadline) => {
+  const deadlineStr = deadline ? new Date(deadline).toLocaleString() : 'N/A';
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">🚨 SLA BREACH — Auto-Escalated</h1>
+        </div>
+        <div style="padding: 30px; background-color: #ffffff;">
+            <h2 style="color: #1e293b; margin-top: 0;">Urgent Attention Required</h2>
+            <p style="font-size: 16px; line-height: 1.6; color: #475569;">
+                A complaint has <strong>breached its SLA deadline</strong> and has been automatically escalated to <strong style="color: #dc2626;">Critical</strong> priority.
+            </p>
+            <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 20px 0;">
+                <p style="margin: 0 0 10px 0;"><strong>Complaint ID:</strong> ${complaintId}</p>
+                <p style="margin: 0 0 10px 0;"><strong>Title:</strong> ${title}</p>
+                <p style="margin: 0 0 10px 0;"><strong>Filed by:</strong> ${studentName}</p>
+                <p style="margin: 0 0 10px 0;"><strong>Previous Priority:</strong> ${prevPriority}</p>
+                <p style="margin: 0 0 10px 0;"><strong>SLA Deadline:</strong> <span style="color: #dc2626; font-weight: bold;">${deadlineStr}</span></p>
+                <p style="margin: 0;"><strong>New Priority:</strong> <span style="color: #dc2626; font-weight: bold; font-size: 18px;">⚠️ CRITICAL</span></p>
+            </div>
+            <p style="font-size: 16px; line-height: 1.6; color: #475569;">
+                Please log in to the Admin Dashboard immediately and take action on this complaint.
+            </p>
+        </div>
+        <div style="background-color: #fef2f2; padding: 20px; text-align: center; color: #991b1b; font-size: 14px; font-weight: bold;">
+            <p style="margin: 0;">CampusBridge Auto-Escalation Engine</p>
+        </div>
+    </div>
+  `;
+};
+
 module.exports = {
   verifyAccountTemplate,
   forgotPasswordTemplate,
   resetSuccessTemplate,
   complaintSubmittedTemplate,
   statusUpdatedTemplate,
-  complaintWithdrawnTemplate
+  complaintWithdrawnTemplate,
+  escalationAlertTemplate
 };

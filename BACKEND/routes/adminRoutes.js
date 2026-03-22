@@ -9,7 +9,8 @@ const {
   getAllComplaints,
   updateComplaint,
   assignComplaint,
-  getAdminNotifications
+  getAdminNotifications,
+  getEscalatedComplaints
 } = require('../controllers/adminController');
 
 // Public
@@ -21,6 +22,7 @@ router.get('/students', protectAdmin, getStudents);
 router.get('/faculty', protectAdmin, getFacultyList);
 router.get('/complaints', protectAdmin, getAllComplaints);
 router.get('/notifications', protectAdmin, getAdminNotifications);
+router.get('/escalated', protectAdmin, getEscalatedComplaints);
 router.put('/complaint/update/:id', protectAdmin, updateComplaint);
 router.put('/complaint/assign/:id', protectAdmin, assignComplaint);
 

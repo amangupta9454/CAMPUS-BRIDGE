@@ -60,6 +60,7 @@ const getDashboardStats = async (req, res) => {
     const resolved = complaints.filter(c => c.status === 'Resolved').length;
     const delayed = complaints.filter(c => c.status === 'Delayed').length;
     const rejected = complaints.filter(c => c.status === 'Rejected').length;
+    const escalatedCount = complaints.filter(c => c.escalatedToAdmin === true).length;
 
     // Resolution rate
     const resolutionRate = totalComplaints > 0 ? ((resolved / totalComplaints) * 100).toFixed(1) : 0;
@@ -76,15 +77,15 @@ const getDashboardStats = async (req, res) => {
 
     // SLA monitoring
     const now = new Date();
-    const slaRules = { High: 24, Medium: 72, Low: 168 }; // hours
+    const slaRules = { High: 24, Medium: 72, Low: 168, Critical: 12 };
     const overdue = [];
     const nearingDeadline = [];
 
     for (const c of complaints) {
       if (['Resolved', 'Rejected', 'Withdrawn'].includes(c.status)) continue;
       const slaHours = slaRules[c.priority] || 72;
-      const deadline = new Date(c.createdAt);
-      deadline.setHours(deadline.getHours() + slaHours);
+      const deadline = c.slaDeadline ? new Date(c.slaDeadline) : new Date(c.createdAt);
+      if (!c.slaDeadline) deadline.setHours(deadline.getHours() + slaHours);
       const diffHrs = (deadline - now) / 3600000;
 
       if (diffHrs < 0) overdue.push(c.complaintId);
@@ -98,6 +99,7 @@ const getDashboardStats = async (req, res) => {
 
     // By priority
     const byPriority = [
+      { name: 'Critical', count: complaints.filter(c => c.priority === 'Critical').length },
       { name: 'High', count: complaints.filter(c => c.priority === 'High').length },
       { name: 'Medium', count: complaints.filter(c => c.priority === 'Medium').length },
       { name: 'Low', count: complaints.filter(c => c.priority === 'Low').length },
@@ -107,7 +109,7 @@ const getDashboardStats = async (req, res) => {
       success: true,
       stats: {
         totalStudents, totalFaculty,
-        totalComplaints, pending, inProgress, resolved, delayed, rejected,
+        totalComplaints, pending, inProgress, resolved, delayed, rejected, escalatedCount,
         resolutionRate, avgResolutionHrs,
         overdueCount: overdue.length, nearingDeadlineCount: nearingDeadline.length,
         byCategory, byPriority
@@ -211,19 +213,22 @@ const getAllComplaints = async (req, res) => {
 
     // SLA calculation
     const now = new Date();
-    const slaRules = { High: 24, Medium: 72, Low: 168 };
+    const slaRules = { High: 24, Medium: 72, Low: 168, Critical: 12 };
     const CLOSED = ['Resolved', 'Rejected', 'Withdrawn'];
 
     const enriched = complaints.map(c => {
       const obj = c.toObject();
       if (!CLOSED.includes(c.status)) {
         const slaHours = slaRules[c.priority] || 72;
-        const deadline = new Date(c.createdAt);
-        deadline.setHours(deadline.getHours() + slaHours);
+        const deadline = c.slaDeadline ? new Date(c.slaDeadline) : new Date(c.createdAt);
+        if (!c.slaDeadline) deadline.setHours(deadline.getHours() + slaHours);
+        obj.slaDeadline = deadline;
         obj.deadline = deadline;
+        obj.slaRemaining = deadline - now; // ms remaining for live timer
         obj.slaStatus = deadline < now ? 'overdue' : (deadline - now) / 3600000 < 6 ? 'nearing' : 'ok';
       } else {
         obj.slaStatus = 'closed';
+        obj.slaRemaining = null;
       }
       // Lock flag: admin cannot modify closed complaints
       obj.isLocked = CLOSED.includes(c.status);
@@ -311,10 +316,11 @@ const assignComplaint = async (req, res) => {
     if (complaint.status === 'Pending') complaint.status = 'In Progress';
 
     // SLA deadline
-    const slaRules = { High: 24, Medium: 72, Low: 168 };
+    const slaRules = { High: 24, Medium: 72, Low: 168, Critical: 12 };
     const deadline = new Date();
     deadline.setHours(deadline.getHours() + (slaRules[complaint.priority] || 72));
     complaint.deadline = deadline;
+    complaint.slaDeadline = deadline;
 
     complaint.history.push({
       status: complaint.status,
@@ -384,6 +390,23 @@ const getAdminNotifications = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/admin/escalated
+// ─────────────────────────────────────────────────────────────────────────────
+const getEscalatedComplaints = async (req, res) => {
+  try {
+    const escalated = await Complaint.find({ escalatedToAdmin: true })
+      .populate('student', 'name email mobile course branch year studentId')
+      .populate('assignedFaculty', 'name email department designation facultyId')
+      .sort({ escalatedAt: -1 });
+
+    res.json({ success: true, complaints: escalated, total: escalated.length });
+  } catch (err) {
+    console.error('getEscalatedComplaints err:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   loginAdmin,
   getDashboardStats,
@@ -392,5 +415,6 @@ module.exports = {
   getAllComplaints,
   updateComplaint,
   assignComplaint,
-  getAdminNotifications
+  getAdminNotifications,
+  getEscalatedComplaints
 };

@@ -6,6 +6,7 @@ import { FileWarning, Search, User, LogOut, ArrowRight, ShieldCheck, Mail, Phone
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import StudentReportItem from './ReportItem';
 import LostFoundList from '../LostFoundList';
+import SlaTimer from '../SlaTimer';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -292,13 +293,14 @@ const StudentDashboard = () => {
                     <th className="py-4 px-6 font-bold">Complaint ID</th>
                     <th className="py-4 px-6 font-bold">Title & Details</th>
                     <th className="py-4 px-6 font-bold">Status</th>
+                    <th className="py-4 px-6 font-bold">SLA Timer</th>
                     <th className="py-4 px-6 font-bold text-right">Action</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-slate-100 bg-white">
                  {complaints.length === 0 ? (
                    <tr>
-                      <td colSpan="4" className="py-12 text-center">
+                      <td colSpan="5" className="py-12 text-center">
                         <div className="inline-block p-4 bg-slate-50 rounded-full text-slate-300 mb-3"><Search size={32}/></div>
                         <p className="text-slate-500 font-medium">You haven't filed any complaints yet.</p>
                       </td>
@@ -321,6 +323,12 @@ const StudentDashboard = () => {
                            <span className={`inline-block px-2.5 py-1 rounded-md border text-xs font-bold ${getStatusStyle(c.status)}`}>
                              {c.status}
                            </span>
+                           {c.escalatedToAdmin && (
+                             <span className="mt-1 inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-black border border-red-200 animate-pulse">🚨 ESCALATED</span>
+                           )}
+                        </td>
+                        <td className="py-4 px-6 align-top">
+                           <SlaTimer deadline={c.slaDeadline} status={c.status} compact />
                         </td>
                         <td className="py-4 px-6 align-top text-right">
                            <button 
@@ -349,6 +357,9 @@ const StudentDashboard = () => {
                  <div className="flex items-center gap-3">
                     <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-100 px-2.5 py-1 rounded-md">{selectedComplaint.complaintId}</span>
                     <span className={`text-xs font-bold px-2.5 py-1 border rounded-md ${getStatusStyle(selectedComplaint.status)}`}>{selectedComplaint.status}</span>
+                    {selectedComplaint.escalatedToAdmin && (
+                      <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-black border border-red-200 animate-pulse">🚨 CRITICAL</span>
+                    )}
                  </div>
                  <button onClick={() => { setSelectedComplaint(null); setRating(0); setComment(''); }} className="p-1.5 bg-white text-slate-400 hover:text-slate-800 rounded-full shadow-sm hover:shadow-md transition-all">
                     <X size={20}/>
@@ -366,6 +377,9 @@ const StudentDashboard = () => {
                          {selectedComplaint.description}
                       </div>
                     </div>
+
+                    {/* SLA Timer in modal */}
+                    <SlaTimer deadline={selectedComplaint.slaDeadline} status={selectedComplaint.status} />
 
                     {/* Faculty Profile Visible to Student */}
                     {selectedComplaint.assignedFaculty && (
