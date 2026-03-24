@@ -7,11 +7,20 @@ import StudentLogin from './Components/Student/StudentLogin';
 import StudentForgetPassword from './Components/Student/StudentForgetPassword';
 import StudentDashboard from './Components/Student/StudentDashboard';
 import ComplaintForm from './Components/Student/ComplaintForm';
+import StudentExams from './Components/Student/StudentExams';
+import StudentNoc from './Components/Student/StudentNoc';
 
 import FacultyRegister from './Components/Faculty/FacultyRegister';
 import FacultyLogin from './Components/Faculty/FacultyLogin';
 import FacultyForgetPassword from './Components/Faculty/FacultyForgetPassword';
 import FacultyDashboard from './Components/Faculty/FacultyDashboard';
+import HodDashboard from './Components/Faculty/HodDashboard';
+import FacultyExams from './Components/Faculty/FacultyExams';
+import FacultyNoc from './Components/Faculty/FacultyNoc';
+
+import HeadRegister from './Components/Head/HeadRegister';
+import HeadLogin from './Components/Head/HeadLogin';
+import HeadDashboard from './Components/Head/HeadDashboard';
 
 import Home from './Pages/Home';
 import Footer from './Components/Footer';
@@ -22,6 +31,7 @@ import About from './Pages/About';
 import Complaints from './Pages/Complaints';
 import AdminLogin from './Components/Admin/AdminLogin';
 import AdminDashboard from './Components/Admin/AdminDashboard';
+import SuperAdminDashboard from './Components/Admin/SuperAdminDashboard';
 
 // Container for pages needing max-width padding
 const PageContainer = ({ children }) => (
@@ -35,12 +45,17 @@ const ProtectedRoute = ({ children, roleType }) => {
   const token = localStorage.getItem('token');
   const isStudent = localStorage.getItem('student') !== null;
   const isFaculty = localStorage.getItem('faculty') !== null;
+  const isHead = localStorage.getItem('head') !== null;
+  const adminData = JSON.parse(localStorage.getItem('admin') || '{}');
   const isAdmin = localStorage.getItem('admin') !== null;
+  const isSuperAdmin = adminData.role === 'SuperAdmin';
 
-  if (!token) return <Navigate to={`/${roleType}/login`} replace />;
+  if (!token) return <Navigate to={`/${roleType === 'superadmin' ? 'admin' : roleType}/login`} replace />;
+  if (roleType === 'superadmin' && !isSuperAdmin) return <Navigate to="/admin/dashboard" replace />;
   if (roleType === 'admin' && !isAdmin) return <Navigate to="/admin/login" replace />;
-  if (roleType === 'faculty' && !isFaculty) return <Navigate to="/student/dashboard" replace />;
-  if (roleType === 'student' && !isStudent) return <Navigate to="/faculty/dashboard" replace />;
+  if (roleType === 'faculty' && !isFaculty) return <Navigate to="/faculty/login" replace />;
+  if (roleType === 'head' && !isHead) return <Navigate to="/head/login" replace />;
+  if (roleType === 'student' && !isStudent) return <Navigate to="/student/login" replace />;
 
   return children;
 };
@@ -48,7 +63,7 @@ const ProtectedRoute = ({ children, roleType }) => {
 // Layout wrapper: Admin routes get NO navbar/footer — they render full-screen
 const AppLayout = () => {
   const { pathname } = useLocation();
-  const isAdminRoute = pathname.startsWith('/admin');
+  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/superadmin');
 
   return (
     <div className={isAdminRoute ? '' : 'min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-indigo-200'}>
@@ -88,12 +103,63 @@ const AppLayout = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/hod/dashboard"
+            element={
+              <Navigate to="/head/dashboard" replace />
+            }
+          />
+
+          {/* Head Routes */}
+          <Route path="/head/register" element={<PageContainer><HeadRegister /></PageContainer>} />
+          <Route path="/head/login" element={<PageContainer><HeadLogin /></PageContainer>} />
+          <Route
+            path="/head/dashboard"
+            element={
+              <ProtectedRoute roleType="head">
+                <PageContainer><HeadDashboard /></PageContainer>
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/student/complaint/new"
             element={
               <ProtectedRoute roleType="student">
                 <PageContainer><ComplaintForm /></PageContainer>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/exams"
+            element={
+              <ProtectedRoute roleType="student">
+                <PageContainer><StudentExams /></PageContainer>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/noc"
+            element={
+              <ProtectedRoute roleType="student">
+                <PageContainer><StudentNoc /></PageContainer>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/faculty/exams"
+            element={
+              <ProtectedRoute roleType="faculty">
+                <PageContainer><FacultyExams /></PageContainer>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/faculty/noc"
+            element={
+              <ProtectedRoute roleType="faculty">
+                <PageContainer><FacultyNoc /></PageContainer>
               </ProtectedRoute>
             }
           />
@@ -105,6 +171,14 @@ const AppLayout = () => {
             element={
               <ProtectedRoute roleType="admin">
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/superadmin/dashboard"
+            element={
+              <ProtectedRoute roleType="superadmin">
+                <SuperAdminDashboard />
               </ProtectedRoute>
             }
           />

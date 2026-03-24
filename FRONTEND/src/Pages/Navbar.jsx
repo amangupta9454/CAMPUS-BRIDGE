@@ -10,6 +10,7 @@ const Navbar = () => {
   const token = localStorage.getItem('token');
   const isStudent = localStorage.getItem('student') !== null;
   const isFaculty = localStorage.getItem('faculty') !== null;
+  const isHead = localStorage.getItem('head') !== null;
   const isAdmin = localStorage.getItem('admin') !== null;
 
   // Close mobile menu when route changes
@@ -21,9 +22,10 @@ const Navbar = () => {
     localStorage.removeItem('token');
     if (isStudent) localStorage.removeItem('student');
     if (isFaculty) localStorage.removeItem('faculty');
+    if (isHead) localStorage.removeItem('head');
     if (isAdmin) localStorage.removeItem('admin');
     toast.success('Logged out successfully');
-    navigate(isAdmin ? '/admin/login' : isFaculty ? '/faculty/login' : '/student/login');
+    navigate(isAdmin ? '/admin/login' : isHead ? '/head/login' : isFaculty ? '/faculty/login' : '/student/login');
   };
 
   const navLinks = [
@@ -74,11 +76,11 @@ const Navbar = () => {
             {token ? (
               <>
                 <Link
-                  to={isAdmin ? "/admin/dashboard" : isFaculty ? "/faculty/dashboard" : "/student/dashboard"}
+                  to={isAdmin ? "/admin/dashboard" : isHead ? "/head/dashboard" : isFaculty ? "/faculty/dashboard" : "/student/dashboard"}
                   className="flex items-center gap-1.5 text-slate-600 hover:text-indigo-600 font-medium transition-colors border border-transparent hover:bg-slate-50 px-3 py-1.5 rounded-lg"
                 >
                   <LayoutDashboard size={18} />
-                  {isAdmin ? "Admin Dashboard" : isFaculty ? "Faculty Dashboard" : "Dashboard"}
+                  {isAdmin ? "Admin Dashboard" : isHead ? "Head Dashboard" : isFaculty ? "Faculty Dashboard" : "Dashboard"}
                 </Link>
                 <button
                   onClick={handleLogout}
@@ -139,11 +141,11 @@ const Navbar = () => {
           {token ? (
             <>
               <Link
-                 to={isFaculty ? "/faculty/dashboard" : "/student/dashboard"}
+                 to={isHead ? "/head/dashboard" : isFaculty ? "/faculty/dashboard" : "/student/dashboard"}
                 className="text-slate-600 hover:text-indigo-600 hover:bg-slate-50 flex items-center gap-2 font-medium py-3 px-2 rounded-lg transition-colors"
               >
                 <LayoutDashboard size={18} />
-                {isFaculty ? "Faculty Dashboard" : "Dashboard"}
+                {isHead ? "Head Dashboard" : isFaculty ? "Faculty Dashboard" : "Dashboard"}
               </Link>
               <button
                 onClick={handleLogout}

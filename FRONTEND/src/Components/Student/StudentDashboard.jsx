@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { FileWarning, Search, User, LogOut, ArrowRight, ShieldCheck, Mail, Phone, Activity, Image as ImageIcon, X, Bell, PackageSearch } from 'lucide-react';
+import { FileWarning, Search, User, LogOut, ArrowRight, ShieldCheck, Mail, Phone, Activity, Image as ImageIcon, X, Bell, PackageSearch, BookOpen, FileText } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import StudentReportItem from './ReportItem';
 import LostFoundList from '../LostFoundList';
@@ -234,12 +234,24 @@ const StudentDashboard = () => {
                 </div>
              </div>
 
-             <div className="w-full md:w-auto">
+             <div className="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+                <button 
+                  onClick={() => navigate('/student/exams')}
+                  className="w-full md:w-auto flex justify-center items-center gap-2 bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-4 py-3 rounded-xl font-bold transition-all shadow-sm"
+                >
+                   <BookOpen size={18} /> Academic Portal
+                </button>
+                <button 
+                  onClick={() => navigate('/student/noc')}
+                  className="w-full md:w-auto flex justify-center items-center gap-2 bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-4 py-3 rounded-xl font-bold transition-all shadow-sm"
+                >
+                   <FileText size={18} /> Document Workflows
+                </button>
                 <button 
                   onClick={() => navigate('/student/complaint/new')}
-                  className="w-full md:w-auto flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-md shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5"
+                  className="w-full md:w-auto flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md shadow-indigo-200 transform hover:-translate-y-0.5"
                 >
-                   <FileWarning size={18} /> Register New Complaint
+                   <FileWarning size={18} /> Register Complaint
                 </button>
              </div>
 

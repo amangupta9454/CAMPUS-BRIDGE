@@ -8,7 +8,7 @@ import FacultyReportItem from './ReportItem';
 import LostFoundList from '../LostFoundList';
 import SlaTimer from '../SlaTimer';
 
-const FacultyDashboard = () => {
+const HodDashboard = () => {
   const navigate = useNavigate();
   const [faculty, setFaculty] = useState(null);
   const [stats, setStats] = useState({ total: 0, highPriority: 0, pending: 0, resolved: 0 });
@@ -68,7 +68,11 @@ const FacultyDashboard = () => {
         setFilteredComplaints(res.data.complaints);
       }
 
-      if (storedFaculty && JSON.parse(storedFaculty).designation === 'HOD') {
+      const localFacStr = localStorage.getItem('faculty');
+      const fac = localFacStr ? JSON.parse(localFacStr) : null;
+      const isHead = fac && (fac.designation === 'HOD' || fac.designation?.toLowerCase().includes('head'));
+
+      if (isHead) {
          const colRes = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/colleagues`, {
            headers: { Authorization: `Bearer ${token}` }
          });
@@ -252,12 +256,10 @@ const FacultyDashboard = () => {
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
-            {faculty?.designation === 'HOD' ? 'Head of Department Workspace' : 'Faculty Workspace'}
+            Sector Head Workspace
           </h1>
           <p className="text-slate-500 mt-1 mb-4">
-            {faculty?.designation === 'HOD' 
-              ? 'Manage departmental complaints anonymously and assign to faculty.' 
-              : 'Manage and resolve student complaints anonymously.'}
+            Manage departmental and sector complaints anonymously and assign workloads to faculty.
           </p>
           <div className="flex flex-wrap gap-3">
              <button onClick={() => navigate('/faculty/exams')} className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-xl text-sm font-bold transition-colors">
@@ -426,11 +428,17 @@ const FacultyDashboard = () => {
                           <span className={`inline-block px-2.5 py-1 rounded border text-xs font-bold ${getPriorityColor(c.priority)}`}>
                             {c.priority || 'Medium'}
                           </span>
-                          {faculty?.designation === 'HOD' && (
-                             <div className="mt-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                               {c.assignedFaculty ? `Assigned to: ${c.assignedFaculty?.name}` : <span className="text-amber-600">Unassigned</span>}
-                             </div>
-                          )}
+                          {(() => {
+                            const isHead = faculty?.designation === 'HOD' || faculty?.designation?.toLowerCase().includes('head');
+                            if (isHead) {
+                              return (
+                               <div className="mt-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                 {c.assignedFaculty ? `Assigned to: ${c.assignedFaculty?.name}` : <span className="text-amber-600">Unassigned</span>}
+                               </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </td>
                         <td className="py-4 px-2 align-top">
                           <div className="flex flex-col items-start gap-1">
@@ -590,14 +598,20 @@ const FacultyDashboard = () => {
                        </button>
                      )}
                      
-                     {faculty?.designation === 'HOD' && (
-                       <button 
-                         onClick={() => setIsAssignModalOpen(true)}
-                         className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
-                       >
-                         <User size={18}/> Assign to Faculty
-                       </button>
-                     )}
+                     {(() => {
+                        const isHead = faculty?.designation === 'HOD' || faculty?.designation?.toLowerCase().includes('head');
+                        if (isHead) {
+                          return (
+                            <button 
+                              onClick={() => setIsAssignModalOpen(true)}
+                              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
+                            >
+                              <User size={18}/> Assign to Faculty
+                            </button>
+                          );
+                        }
+                        return null;
+                     })()}
                   </div>
                   
                   <div className="p-6 overflow-y-auto flex-grow">
@@ -738,4 +752,4 @@ const FacultyDashboard = () => {
   );
 };
 
-export default FacultyDashboard;
+export default HodDashboard;

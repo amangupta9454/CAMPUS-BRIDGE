@@ -49,9 +49,22 @@ const StudentLogin = () => {
           <p className="text-slate-500 mt-2">Login to manage your complaints.</p>
         </div>
 
-        <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
-          <button type="button" className="flex-1 py-2 font-semibold text-sm rounded-lg bg-white text-indigo-700 shadow-sm transition-all" disabled>Student</button>
-          <button type="button" onClick={() => navigate('/faculty/login')} className="flex-1 py-2 font-semibold text-sm rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-200 transition-all">Teacher</button>
+        <div className="space-y-1 mb-6">
+          <label className="text-sm font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5 text-[10px]">Access Portal Role</label>
+          <select 
+             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-800 bg-white/70 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-semibold"
+             value="Student"
+             onChange={(e) => {
+                const v = e.target.value;
+                if(v === 'Teacher' || v === 'HOD') navigate('/faculty/login');
+                if(v === 'Admin') navigate('/admin/login');
+             }}
+          >
+             <option value="Student">Student</option>
+             <option value="Teacher">Teacher / Faculty</option>
+             <option value="HOD">HOD / Sector Head</option>
+             <option value="Admin">Administrator / Director</option>
+          </select>
         </div>
 
         <form onSubmit={handleLoginSubmit} className="space-y-6">

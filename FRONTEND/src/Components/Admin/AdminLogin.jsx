@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app';
 
 const AdminLogin = () => {
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '', role: 'Director' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -24,8 +24,14 @@ const AdminLogin = () => {
       if (data.success) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('admin', JSON.stringify(data.admin));
-        toast.success('Welcome back, Admin!');
-        navigate('/admin/dashboard');
+        
+        if(data.admin.role === 'SuperAdmin') {
+           toast.success('Welcome back, Super Admin!');
+           navigate('/superadmin/dashboard');
+        } else {
+           toast.success('Welcome back, Admin!');
+           navigate('/admin/dashboard');
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed');
@@ -59,7 +65,34 @@ const AdminLogin = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Admin Email</label>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Access Portal Role</label>
+              <div className="relative">
+                <ShieldAlert size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <select
+                  name="role"
+                  value={form.role}
+                  onChange={(e) => {
+                     const v = e.target.value;
+                     if(v === 'Student') navigate('/student/login');
+                     else if(v === 'Teacher' || v === 'HOD') navigate('/faculty/login');
+                     else handleChange(e);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-indigo-400 focus:bg-white transition-all appearance-none cursor-pointer font-semibold"
+                >
+                  <option value="Student">Student</option>
+                  <option value="Teacher">Teacher / Faculty</option>
+                  <option value="HOD">Sector Head / HOD</option>
+                  <option value="Director">Admin (Director)</option>
+                  <option value="SuperAdmin">Super Admin</option>
+                </select>
+                <div className="absolute inset-y-0 right-4 flex flex-col justify-center pointer-events-none">
+                   <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">{form.role === 'SuperAdmin' ? 'Super Admin Email' : 'Admin Email'}</label>
               <div className="relative">
                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -67,7 +100,7 @@ const AdminLogin = () => {
                   name="email"
                   value={form.email}
                   onChange={handleChange}
-                  placeholder="admin@campusbridge.edu"
+                  placeholder={form.role === 'SuperAdmin' ? 'superadmin@campusbridge.edu' : 'admin@campusbridge.edu'}
                   className="w-full bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-indigo-400 focus:bg-white transition-all"
                 />
               </div>

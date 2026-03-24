@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, GraduationCap, FileText, Bell, LogOut,
   Search, X, ChevronLeft, ChevronRight, AlertTriangle,
   CheckCircle, Clock, ShieldAlert, RefreshCw, Menu,
-  BarChart3, TrendingUp, Lock, PackageSearch
+  BarChart3, TrendingUp, Lock, PackageSearch, FileSpreadsheet
 } from 'lucide-react';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import LostFoundList from '../LostFoundList';
 import SlaTimer from '../SlaTimer';
+import AdminNocTab from './AdminNocTab';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app';
 const authHeader = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
@@ -413,6 +414,7 @@ const AdminDashboard = () => {
     { id: 'faculty',    label: 'Faculty',    icon: <GraduationCap size={18}/> },
     { id: 'complaints', label: 'Complaints', icon: <FileText size={18}/> },
     { id: 'lostfound',  label: 'Lost & Found', icon: <PackageSearch size={18}/> },
+    { id: 'noc',        label: 'Workflows',  icon: <FileSpreadsheet size={18}/> },
     { id: 'analytics',  label: 'Analytics',  icon: <BarChart3 size={18}/> },
   ];
 
@@ -849,6 +851,9 @@ const AdminDashboard = () => {
                 <LostFoundList canReturn={true} compact={false} />
               </div>
             )}
+
+            {/* ═══ NOC FLOW ══════════════════════════════════════════════ */}
+            {section === 'noc' && <AdminNocTab />}
 
             {/* ═══ ANALYTICS ═══════════════════════════════════════════════ */}
             {section === 'analytics' && (

@@ -41,13 +41,12 @@ const complaintSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Auto-compute slaDeadline before saving if not set
-complaintSchema.pre('save', function (next) {
+complaintSchema.pre('save', function () {
   if (!this.slaDeadline && this.priority) {
     const hours = SLA_HOURS[this.priority] || 72;
     this.slaDeadline = new Date(this.createdAt || Date.now());
     this.slaDeadline.setHours(this.slaDeadline.getHours() + hours);
   }
-  next();
 });
 
 module.exports = mongoose.model('Complaint', complaintSchema);

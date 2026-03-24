@@ -4,7 +4,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
-const FacultyLogin = () => {
+const HeadLogin = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -13,7 +13,7 @@ const FacultyLogin = () => {
     email: '',
     password: ''
   });
-  const [selectedRole, setSelectedRole] = useState('Teacher');
+  const [selectedRole, setSelectedRole] = useState('HOD');
 
   const handleInputChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -24,14 +24,13 @@ const FacultyLogin = () => {
 
     try {
       setLoading(true);
-      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/login`, formData);
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/head/login`, formData);
       
       if (res.data.success) {
         localStorage.setItem('token', res.data.token);
-        localStorage.setItem('faculty', JSON.stringify(res.data.faculty));
+        localStorage.setItem('head', JSON.stringify(res.data.head));
         toast.success('Logged in successfully');
-        const isHead = res.data.faculty.designation === 'HOD' || res.data.faculty.designation?.toLowerCase().includes('head');
-        navigate(isHead ? '/hod/dashboard' : '/faculty/dashboard');
+        navigate('/head/dashboard');
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Invalid credentials');
@@ -46,9 +45,9 @@ const FacultyLogin = () => {
         
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">
-            Faculty Portal
+            Head Portal
           </h2>
-          <p className="text-slate-500 mt-2">Login to manage student complaints.</p>
+          <p className="text-slate-500 mt-2">Login to manage departmental complaints.</p>
         </div>
 
         <div className="space-y-1 mb-6">
@@ -59,8 +58,9 @@ const FacultyLogin = () => {
              onChange={(e) => {
                 const v = e.target.value;
                 if(v === 'Student') navigate('/student/login');
+                else if(v === 'Teacher') navigate('/faculty/login');
                 else if(v === 'Admin') navigate('/admin/login');
-                else setSelectedRole(v); // Switch between Teacher and HOD visually
+                else setSelectedRole(v);
              }}
           >
              <option value="Student">Student</option>
@@ -74,13 +74,12 @@ const FacultyLogin = () => {
           
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5"><Mail size={16}/> Email Address</label>
-            <input required type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all bg-white/50" placeholder="jane@college.edu" />
+            <input required type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all bg-white/50" placeholder="head@college.edu" />
           </div>
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
               <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5"><Lock size={16}/> Password</label>
-              <Link to="/faculty/forgot-password" className="text-xs text-red-600 font-medium hover:underline">Forgot password?</Link>
             </div>
             <div className="relative">
               <input required type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all bg-white/50 pr-10" placeholder="••••••••" />
@@ -95,7 +94,7 @@ const FacultyLogin = () => {
           </button>
           
           <p className="text-center text-sm text-slate-600 mt-4">
-            Don't have an account? <Link to="/faculty/register" className="text-red-600 font-semibold hover:underline">Register here</Link>
+            Don't have an account? <Link to="/head/register" className="text-red-600 font-semibold hover:underline">Register here</Link>
           </p>
 
         </form>
@@ -104,4 +103,4 @@ const FacultyLogin = () => {
   );
 };
 
-export default FacultyLogin;
+export default HeadLogin;

@@ -4,6 +4,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
+const Admin = require('./models/Admin');
+const bcrypt = require('bcryptjs');
 
 // Connect to Database
 connectDB();
@@ -38,6 +40,12 @@ app.use('/api/faculty', require('./routes/facultyRoutes'));
 app.use('/api/complaint', require('./routes/complaintRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/lostfound', require('./routes/lostFoundRoutes'));
+
+// New Routes
+app.use('/api/exam', require('./routes/examRoutes'));
+app.use('/api/noc', require('./routes/nocRoutes'));
+app.use('/api/superadmin', require('./routes/superAdminRoutes'));
+app.use('/api/head', require('./routes/headRoutes'));
 
 // Global error handler
 app.use((err, req, res, next) => {

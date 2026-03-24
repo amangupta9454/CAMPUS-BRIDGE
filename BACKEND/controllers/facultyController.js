@@ -189,11 +189,15 @@ const resetPassword = async (req, res) => {
 // @route   GET /api/faculty/complaints
 const getFacultyComplaints = async (req, res) => {
   try {
-    // For now, returning all complaints. In advanced logic, you filter by department or assignedFaculty
-    // The requirement explicitly states: "NO student identity visible"
-    // So we don't populate 'student', or we select only non-identifiable fields.
-    const complaints = await Complaint.find()
+    let filter = {};
+    const isHead = req.faculty.designation === 'HOD' || (req.faculty.designation && req.faculty.designation.toLowerCase().includes('head'));
+    if (!isHead) {
+      filter.assignedFaculty = req.faculty._id;
+    }
+
+    const complaints = await Complaint.find(filter)
       .select('-student') 
+      .populate('assignedFaculty', 'name designation')
       .sort({ createdAt: -1 });
 
     const stats = {
@@ -223,6 +227,14 @@ const updateComplaint = async (req, res) => {
 
     const complaint = await Complaint.findById(complaintId).populate('student', 'email name');
     if (!complaint) return res.status(404).json({ success: false, message: 'Complaint not found' });
+
+    // HODs can bypass, but normal faculty must be the assignee
+    const isHead = req.faculty.designation === 'HOD' || (req.faculty.designation && req.faculty.designation.toLowerCase().includes('head'));
+    if (!isHead) {
+      if (!complaint.assignedFaculty || complaint.assignedFaculty.toString() !== req.faculty._id.toString()) {
+         return res.status(403).json({ success: false, message: 'You are not assigned to resolve this complaint' });
+      }
+    }
 
     complaint.status = status;
     if (status === 'Delayed') complaint.delayReason = reason;
@@ -263,6 +275,60 @@ const updateComplaint = async (req, res) => {
   }
 };
 
+// @desc    Get List of Faculty for HOD Assignment
+// @route   GET /api/faculty/colleagues
+const getFacultyListForHOD = async (req, res) => {
+  try {
+    const isHead = req.faculty.designation === 'HOD' || (req.faculty.designation && req.faculty.designation.toLowerCase().includes('head'));
+    if (!isHead) return res.status(403).json({ success: false, message: 'HOD privileges required' });
+    const cols = await Faculty.find({ _id: { $ne: req.faculty._id } }).select('name email department designation facultyId');
+    res.status(200).json({ success: true, faculty: cols });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error fetching faculty' });
+  }
+};
+
+// @desc    Assign Complaint to Faculty (HOD ONLY)
+// @route   PUT /api/faculty/assign-complaint/:id
+const assignComplaintToFaculty = async (req, res) => {
+  try {
+    const isHead = req.faculty.designation === 'HOD' || (req.faculty.designation && req.faculty.designation.toLowerCase().includes('head'));
+    if (!isHead) return res.status(403).json({ success: false, message: 'HOD privileges required' });
+    
+    const { facultyId } = req.body;
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) return res.status(404).json({ success: false, message: 'Complaint not found' });
+
+    const faculty = await Faculty.findById(facultyId);
+    if (!faculty) return res.status(404).json({ success: false, message: 'Target faculty not found' });
+
+    complaint.assignedFaculty = facultyId;
+    if (complaint.status === 'Pending') complaint.status = 'In Progress';
+    
+    complaint.history.push({
+      status: complaint.status,
+      message: `Assigned to ${faculty.name} by HOD ${req.faculty.name}`,
+      updatedBy: req.faculty.name
+    });
+
+    await complaint.save();
+
+    await Notification.create({
+      user: facultyId,
+      userModel: 'Faculty',
+      complaintId: complaint._id,
+      title: 'New Assignment',
+      message: `HOD assigned you complaint ${complaint.complaintId}.`,
+      type: 'info'
+    });
+
+    res.status(200).json({ success: true, message: 'Complaint assigned successfully', complaint });
+  } catch (error) {
+    console.error('Error in assignComplaint:', error);
+    res.status(500).json({ success: false, message: 'Server error assigning complaint' });
+  }
+};
+
 const submitFacultyFeedback = async (req, res) => {
   try {
     const { rating, comment } = req.body;
@@ -299,5 +365,5 @@ const submitFacultyFeedback = async (req, res) => {
 };
 
 module.exports = {
-  registerFaculty, verifyOTP, loginFaculty, forgotPassword, resetPassword, getFacultyComplaints, updateComplaint, submitFacultyFeedback
+  registerFaculty, verifyOTP, loginFaculty, forgotPassword, resetPassword, getFacultyComplaints, updateComplaint, assignComplaintToFaculty, submitFacultyFeedback, getFacultyListForHOD
 };
