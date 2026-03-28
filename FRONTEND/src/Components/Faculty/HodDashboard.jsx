@@ -59,6 +59,11 @@ const HodDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/faculty/login');
+        return;
+      }
+
       const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/complaints`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -72,14 +77,26 @@ const HodDashboard = () => {
       const fac = localFacStr ? JSON.parse(localFacStr) : null;
       const isHead = fac && (fac.designation === 'HOD' || fac.designation?.toLowerCase().includes('head'));
 
+      // Fetch colleagues separately — a failure here shouldn't break the main dashboard
       if (isHead) {
-         const colRes = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/colleagues`, {
-           headers: { Authorization: `Bearer ${token}` }
-         });
-         if (colRes.data.success) setColleagues(colRes.data.faculty);
+        try {
+          const colRes = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'https://campus-bridge-tau.vercel.app'}/api/faculty/colleagues`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (colRes.data.success) setColleagues(colRes.data.faculty);
+        } catch (colErr) {
+          console.error('Failed to load faculty list:', colErr.message);
+        }
       }
     } catch (error) {
-      toast.error('Failed to load complaints');
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please log in again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('faculty');
+        navigate('/faculty/login');
+      } else {
+        toast.error('Failed to load complaints');
+      }
     } finally {
       setLoading(false);
     }
